@@ -64,7 +64,7 @@
     .card {
       background: #fff;
       border-radius: 12px;
-      padding: 20px;
+      padding: 30px;
       margin-bottom: 15px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       text-align: center;
@@ -72,7 +72,12 @@
 
     .card h2 {
       font-family: 'Montserrat', sans-serif;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
+      padding: 10px;
+    }
+
+    .card p {
+      padding: 10px;
     }
 
     /* Navigation buttons */
@@ -92,6 +97,7 @@
       font-size: 16px;
       cursor: pointer;
       transition: 0.3s;
+      width: 120px; /* Ensure same size */
     }
 
     .nav-buttons button:hover {
@@ -144,6 +150,12 @@
       background: #ccc;
       color: #666;
       cursor: not-allowed;
+    }
+
+    .comment-list {
+      max-height: 150px;
+      overflow-y: auto;
+      margin-bottom: 12px;
     }
 
     .comment {
@@ -224,8 +236,16 @@
     /* Responsive */
     @media(max-width: 768px) {
       .top-nav {
-        flex-direction: column;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
         gap: 10px;
+      }
+      .top-nav .left {
+        justify-content: flex-start;
+      }
+      .top-nav button:last-child {
+        margin-left: auto;
       }
     }
   </style>
@@ -273,7 +293,7 @@
     <div class="comments">
       <div class="comments-header">
         <div class="stats">
-          👍 <span id="likeCount">12</span> · 💬 <span id="commentCount">2</span>
+          👍 <span id="likeCount">0</span> · 💬 <span id="commentCount">0</span>
         </div>
         <div class="actions">
           <button id="likeBtn">Like</button>
@@ -285,15 +305,8 @@
         <textarea id="commentText" placeholder="Add a comment..." style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;"></textarea>
         <button onclick="submitComment()" style="background:#2E8BC0; color:#fff; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">Submit</button>
       </div>
-      <div id="commentList">
-        <div class="comment">
-          <strong>User 1:</strong>
-          Really useful phrase for project management!
-        </div>
-        <div class="comment">
-          <strong>User 2:</strong>
-          I’ve heard this a lot in meetings. Nice explanation.
-        </div>
+      <div id="commentList" class="comment-list">
+        <!-- Comments loaded dynamically -->
       </div>
     </div>
   </div>
@@ -316,7 +329,7 @@
     let currentIndex = 0;
 
     const PHRASES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx3wQD_d33uZsOTPlmRddf01gml1iuRiAMLyvGVk9U-Kv2-F5zIGUuSBuOBgu2O36ntNUD4KlaYhoZ/pub?output=csv";
-    const COMMENT_URL = "https://script.google.com/macros/s/AKfycbwcjIrrRjaJCoec8lxbin4Lb9I4RUjwPwo_rmHlQFHcNwt0_eqfWQgivUuOVjzG_zw25Q/exec";
+    const COMMENT_URL = "https://script.google.com/macros/s/AKfycbyDrNr2Tgqtf7lKKNdovVeGJyhkRFHuFr2CXVWHa8qAEinw0T0nxGY8fznEsF2J4sQOUQ/exec";
 
     function parseCSVLine(line) {
       let parts = [];
@@ -357,8 +370,38 @@
           }
         }
         showPhrase();
+        updateQuiz();
       } catch (e) {
         document.getElementById("phraseText").textContent = "Error loading phrases.";
+      }
+    }
+
+    async function loadComments() {
+      try {
+        let res = await fetch(`${COMMENT_URL}?action=getComments`);
+        let data = await res.json();
+        let commentList = document.getElementById('commentList');
+        commentList.innerHTML = '';
+        let comments = data.comments.slice(0, 3); // Show only top 3
+        comments.forEach(c => {
+          let newComment = document.createElement('div');
+          newComment.className = 'comment';
+          newComment.innerHTML = `<strong>${c.username}:</strong> ${c.comment}`;
+          commentList.appendChild(newComment);
+        });
+        document.getElementById('commentCount').textContent = data.comments.length;
+      } catch (e) {
+        console.error('Error loading comments:', e);
+      }
+    }
+
+    async function loadLikes() {
+      try {
+        let res = await fetch(`${COMMENT_URL}?action=getLikes`);
+        let data = await res.json();
+        document.getElementById('likeCount').textContent = data.likes || 0;
+      } catch (e) {
+        console.error('Error loading likes:', e);
       }
     }
 
@@ -375,6 +418,7 @@
       if (currentIndex > 0) {
         currentIndex--;
         showPhrase();
+        updateQuiz();
       }
     }
 
@@ -382,6 +426,7 @@
       if (currentIndex < phrases.length - 1) {
         currentIndex++;
         showPhrase();
+        updateQuiz();
       }
     }
 
@@ -393,7 +438,7 @@
       document.getElementById('quizBtn').disabled = (section === 'quiz');
 
       if (section === 'quiz') {
-        quizStartTime = new Date(); // start timer
+        quizStartTime = new Date();
         updateQuiz();
       }
     }
@@ -482,10 +527,22 @@
     }
 
     // Like and Comment functionality
-    document.getElementById('likeBtn').onclick = function() {
+    document.getElementById('likeBtn').onclick = async function() {
       this.disabled = true;
-      let count = parseInt(document.getElementById('likeCount').textContent);
-      document.getElementById('likeCount').textContent = count + 1;
+      try {
+        let res = await fetch(`${COMMENT_URL}?action=addLike`, { method: 'POST' });
+        let data = await res.json();
+        if (data.status === 'success') {
+          let count = parseInt(document.getElementById('likeCount').textContent);
+          document.getElementById('likeCount').textContent = count + 1;
+        } else {
+          alert('Error adding like.');
+          this.disabled = false;
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+        this.disabled = false;
+      }
     };
 
     document.getElementById('commentBtn').onclick = function() {
@@ -509,7 +566,11 @@
           let newComment = document.createElement('div');
           newComment.className = 'comment';
           newComment.innerHTML = `<strong>${username}:</strong> ${comment}`;
-          document.getElementById('commentList').appendChild(newComment);
+          let commentList = document.getElementById('commentList');
+          commentList.insertBefore(newComment, commentList.firstChild);
+          while (commentList.children.length > 3) {
+            commentList.removeChild(commentList.lastChild);
+          }
           let ccount = parseInt(document.getElementById('commentCount').textContent);
           document.getElementById('commentCount').textContent = ccount + 1;
           document.getElementById('username').value = '';
@@ -523,7 +584,10 @@
       }
     }
 
+    // Initialize
     loadPhrases();
+    loadComments();
+    loadLikes();
   </script>
 </body>
 </html>

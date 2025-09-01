@@ -120,6 +120,32 @@
       color: #555;
     }
 
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .actions button {
+      background: #fff;
+      color: #2E8BC0;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .actions button:hover:enabled {
+      background: #145DA0;
+      color: #fff;
+    }
+
+    .actions button:disabled {
+      background: #ccc;
+      color: #666;
+      cursor: not-allowed;
+    }
+
     .comment {
       margin-bottom: 12px;
       padding: 10px;
@@ -234,10 +260,12 @@
     <!-- Quiz Section -->
     <div id="quizSection" style="display:none;">
       <div class="card">
-        <h2>Quiz: What does "Target low hanging fruit" mean?</h2>
-        <button class="quiz-option" onclick="checkAnswer(true)">Tackle easier options first</button>
-        <button class="quiz-option" onclick="checkAnswer(false)">Aim for difficult challenges</button>
-        <button class="quiz-option" onclick="checkAnswer(false)">Ignore minor tasks</button>
+        <h2 id="quizTitle">Quiz: What does "Target low hanging fruit" mean?</h2>
+        <div id="quizOptions">
+          <button class="quiz-option" onclick="checkAnswer(true)">Tackle easier options first</button>
+          <button class="quiz-option" onclick="checkAnswer(false)">Aim for difficult challenges</button>
+          <button class="quiz-option" onclick="checkAnswer(false)">Ignore minor tasks</button>
+        </div>
       </div>
     </div>
 
@@ -247,14 +275,25 @@
         <div class="stats">
           👍 <span id="likeCount">12</span> · 💬 <span id="commentCount">2</span>
         </div>
+        <div class="actions">
+          <button id="likeBtn">Like</button>
+          <button id="commentBtn">Comment</button>
+        </div>
       </div>
-      <div class="comment">
-        <strong>User 1:</strong>
-        Really useful phrase for project management!
+      <div id="commentForm" style="display:none; margin-bottom:15px;">
+        <input id="username" type="text" placeholder="Your name" style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;">
+        <textarea id="commentText" placeholder="Add a comment..." style="width:100%; padding:8px; margin-bottom:8px; box-sizing:border-box;"></textarea>
+        <button onclick="submitComment()" style="background:#2E8BC0; color:#fff; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">Submit</button>
       </div>
-      <div class="comment">
-        <strong>User 2:</strong>
-        I’ve heard this a lot in meetings. Nice explanation.
+      <div id="commentList">
+        <div class="comment">
+          <strong>User 1:</strong>
+          Really useful phrase for project management!
+        </div>
+        <div class="comment">
+          <strong>User 2:</strong>
+          I’ve heard this a lot in meetings. Nice explanation.
+        </div>
       </div>
     </div>
   </div>
@@ -276,12 +315,47 @@
     let phrases = [];
     let currentIndex = 0;
 
-    const GOOGLE_SHEET_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE";
+    const PHRASES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx3wQD_d33uZsOTPlmRddf01gml1iuRiAMLyvGVk9U-Kv2-F5zIGUuSBuOBgu2O36ntNUD4KlaYhoZ/pub?output=csv";
+    const COMMENT_URL = "https://script.google.com/macros/s/AKfycbwcjIrrRjaJCoec8lxbin4Lb9I4RUjwPwo_rmHlQFHcNwt0_eqfWQgivUuOVjzG_zw25Q/exec";
+
+    function parseCSVLine(line) {
+      let parts = [];
+      let current = '';
+      let inQuote = false;
+      for (let char of line) {
+        if (char === '"') {
+          inQuote = !inQuote;
+        } else if (char === ',' && !inQuote) {
+          parts.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      parts.push(current.trim());
+      return parts;
+    }
 
     async function loadPhrases() {
       try {
-        let res = await fetch(GOOGLE_SHEET_URL);
-        phrases = await res.json();
+        let res = await fetch(PHRASES_CSV_URL);
+        let text = await res.text();
+        let lines = text.split(/\r?\n/);
+        phrases = [];
+        if (lines.length > 1) {
+          // Skip header
+          for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim() === '') continue;
+            let parts = parseCSVLine(lines[i]);
+            if (parts.length >= 3) {
+              phrases.push({
+                phrase: parts[0],
+                meaning: parts[1],
+                usage: parts[2]
+              });
+            }
+          }
+        }
         showPhrase();
       } catch (e) {
         document.getElementById("phraseText").textContent = "Error loading phrases.";
@@ -318,9 +392,32 @@
       document.getElementById('phraseBtn').disabled = (section === 'phrase');
       document.getElementById('quizBtn').disabled = (section === 'quiz');
 
-      if(section === 'quiz') {
+      if (section === 'quiz') {
         quizStartTime = new Date(); // start timer
+        updateQuiz();
       }
+    }
+
+    function updateQuiz() {
+      if (phrases.length === 0) return;
+      let p = phrases[currentIndex];
+      document.getElementById('quizTitle').innerHTML = `Quiz: What does "${p.phrase}" mean?`;
+
+      let meanings = phrases.map(q => q.meaning);
+      let correct = p.meaning;
+      let wrongs = meanings.filter(m => m !== correct).sort(() => Math.random() - 0.5).slice(0, 2);
+      let options = [correct, ...wrongs].sort(() => Math.random() - 0.5);
+
+      let quizOptions = document.getElementById('quizOptions');
+      quizOptions.innerHTML = '';
+      options.forEach(opt => {
+        let isCorrect = opt === correct;
+        let btn = document.createElement('button');
+        btn.className = 'quiz-option';
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(isCorrect);
+        quizOptions.appendChild(btn);
+      });
     }
 
     function checkAnswer(isCorrect) {
@@ -381,6 +478,48 @@
         });
       } else {
         alert("Sharing not supported on this browser.");
+      }
+    }
+
+    // Like and Comment functionality
+    document.getElementById('likeBtn').onclick = function() {
+      this.disabled = true;
+      let count = parseInt(document.getElementById('likeCount').textContent);
+      document.getElementById('likeCount').textContent = count + 1;
+    };
+
+    document.getElementById('commentBtn').onclick = function() {
+      document.getElementById('commentForm').style.display = 'block';
+    };
+
+    async function submitComment() {
+      let username = document.getElementById('username').value.trim();
+      let comment = document.getElementById('commentText').value.trim();
+      if (!username || !comment) {
+        alert('Please enter your name and comment.');
+        return;
+      }
+      try {
+        let res = await fetch(COMMENT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ username, comment })
+        });
+        let data = await res.json();
+        if (data.status === 'success') {
+          let newComment = document.createElement('div');
+          newComment.className = 'comment';
+          newComment.innerHTML = `<strong>${username}:</strong> ${comment}`;
+          document.getElementById('commentList').appendChild(newComment);
+          let ccount = parseInt(document.getElementById('commentCount').textContent);
+          document.getElementById('commentCount').textContent = ccount + 1;
+          document.getElementById('username').value = '';
+          document.getElementById('commentText').value = '';
+          document.getElementById('commentForm').style.display = 'none';
+        } else {
+          alert('Error adding comment.');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
       }
     }
 

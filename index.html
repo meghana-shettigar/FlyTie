@@ -29,6 +29,13 @@
     .top-nav .left {
       display: flex;
       gap: 10px;
+      align-items: center;
+    }
+
+    .app-name {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
     }
 
     .top-nav button {
@@ -87,9 +94,9 @@
       gap: 5px;
       font-size: 14px;
       color: #555;
-      margin-top: 20px; /* Match spacing with nav-buttons */
-      align-items: center; /* Center horizontally */
-      text-align: left; /* Keep text left-aligned within centered container */
+      margin-top: 20px;
+      align-items: center;
+      text-align: left;
     }
 
     .like-section button {
@@ -102,7 +109,7 @@
       transition: 0.3s;
       margin-right: 10px;
       font-size: 14px;
-      align-self: flex-start; /* Align button with text */
+      align-self: flex-start;
     }
 
     .like-section button:hover:enabled {
@@ -127,7 +134,7 @@
     .nav-buttons button {
       background: #2E8BC0;
       border: none;
-      padding: 15px 0px;
+      padding: 15px 40px;
       border-radius: 10px;
       color: #fff;
       font-size: 16px;
@@ -155,6 +162,7 @@
     .comments-header {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       margin-bottom: 10px;
     }
 
@@ -166,6 +174,7 @@
     .actions {
       display: flex;
       gap: 10px;
+      align-items: center;
     }
 
     .actions button {
@@ -263,6 +272,12 @@
       cursor: pointer;
     }
 
+    .modal-content button:disabled {
+      background: #ccc;
+      color: #666;
+      cursor: not-allowed;
+    }
+
     .progress-bar {
       width: 100%;
       height: 6px;
@@ -294,7 +309,7 @@
         margin-left: auto;
       }
       .like-section {
-        margin-top: 20px; /* Match spacing with nav-buttons */
+        margin-top: 20px;
       }
     }
   </style>
@@ -303,10 +318,11 @@
   <!-- Top Nav -->
   <div class="top-nav">
     <div class="left">
+      <span class="app-name">FlyTie</span>
       <button id="phraseBtn" disabled onclick="showSection('phrase')">Phrase</button>
       <button id="quizBtn" onclick="showSection('quiz')">Quiz</button>
     </div>
-    <button onclick="globalShare()">🔗 Share</button>
+    <button onclick="globalShare()">↗ Share</button>
   </div>
 
   <!-- Main Content -->
@@ -350,6 +366,7 @@
           💬 <span id="commentCount">0</span>
         </div>
         <div class="actions">
+          <span>Like FlyTie?</span>
           <button id="commentBtn">Comment</button>
         </div>
       </div>
@@ -372,7 +389,7 @@
         <div class="progress-fill" id="progressFill"></div>
       </div>
       <button id="okBtn" onclick="closePopup()">OK</button>
-      <button id="shareBtn" style="display:none;" onclick="shareResult()">🔗 Share</button>
+      <button id="shareBtn" style="display:none;" onclick="shareResult()">↗ Share</button>
     </div>
   </div>
 
@@ -649,7 +666,7 @@
         if (data.status === 'success') {
           let newComment = document.createElement('div');
           newComment.className = 'comment';
-          newComment.innerHTML = `<strong>${username}:</strong> ${comment}`;
+          newComment.innerHTML = `<strong>${username}:</strong> ${c.comment}`;
           let commentList = document.getElementById('commentList');
           commentList.insertBefore(newComment, commentList.firstChild);
           while (commentList.children.length > 3) {

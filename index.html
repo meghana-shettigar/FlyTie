@@ -13,43 +13,52 @@
       color: #222;
       display: flex;
       height: 100vh;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 200px;
-      background: #2E8BC0;
-      color: #fff;
-      display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 20px 0;
     }
 
-    .sidebar button {
+    /* Top Nav */
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #2E8BC0;
+      padding: 10px 20px;
+      color: #fff;
+    }
+
+    .top-nav .left {
+      display: flex;
+      gap: 10px;
+    }
+
+    .top-nav button {
       background: #fff;
       color: #2E8BC0;
       border: none;
-      padding: 12px;
-      margin: 10px 0;
-      width: 80%;
-      font-weight: bold;
+      padding: 12px 20px;
       border-radius: 8px;
+      font-weight: bold;
       cursor: pointer;
       transition: 0.3s;
+      font-size: 16px;
     }
 
-    .sidebar button:hover {
+    .top-nav button:disabled {
+      background: #ccc;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .top-nav button:hover:enabled {
       background: #145DA0;
       color: #fff;
     }
 
-    /* Main content */
     .main {
       flex: 1;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      padding: 20px;
     }
 
     .card {
@@ -77,7 +86,7 @@
     .nav-buttons button {
       background: #2E8BC0;
       border: none;
-      padding: 15px 30px;
+      padding: 15px 40px;
       border-radius: 10px;
       color: #fff;
       font-size: 16px;
@@ -96,30 +105,19 @@
       border-radius: 12px;
       padding: 15px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      overflow-y: auto;
       display: flex;
       flex-direction: column;
     }
 
     .comments-header {
       display: flex;
-      justify-content: flex-end;
-      gap: 10px;
+      justify-content: space-between;
       margin-bottom: 10px;
     }
 
-    .comments-header button {
-      background: #2E8BC0;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 8px;
-      color: #fff;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    .comments-header button:hover {
-      background: #145DA0;
+    .stats {
+      font-size: 14px;
+      color: #555;
     }
 
     .comment {
@@ -181,31 +179,39 @@
       cursor: pointer;
     }
 
-    .modal-content button:hover {
-      background: #145DA0;
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #eee;
+      margin-top: 10px;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      background: #2E8BC0;
+      transition: width 5s linear;
     }
 
     /* Responsive */
     @media(max-width: 768px) {
-      body {
+      .top-nav {
         flex-direction: column;
-      }
-      .sidebar {
-        width: 100%;
-        flex-direction: row;
-        justify-content: space-around;
-      }
-      .sidebar button {
-        width: auto;
+        gap: 10px;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <button onclick="showSection('phrase')">Phrase</button>
-    <button onclick="showSection('quiz')">Quiz</button>
+  <!-- Top Nav -->
+  <div class="top-nav">
+    <div class="left">
+      <button id="phraseBtn" disabled onclick="showSection('phrase')">Phrase</button>
+      <button id="quizBtn" onclick="showSection('quiz')">Quiz</button>
+    </div>
+    <button onclick="globalShare()">🔗 Share</button>
   </div>
 
   <!-- Main Content -->
@@ -213,15 +219,15 @@
     <!-- Phrase Section -->
     <div id="phraseSection">
       <div class="card">
-        <h2>"Target low hanging fruit"</h2>
-        <p><strong>Meaning:</strong> Tackle easier options first</p>
-        <p><strong>Usage:</strong> During the issue fixing we tried to target low hanging fruit first.</p>
+        <h2 id="phraseText">Loading...</h2>
+        <p><strong>Meaning:</strong> <span id="meaningText">Loading...</span></p>
+        <p><strong>Usage:</strong> <span id="usageText">Loading...</span></p>
       </div>
 
       <!-- Navigation -->
       <div class="nav-buttons">
-        <button>⬅ Previous</button>
-        <button>Next ➡</button>
+        <button onclick="prevPhrase()">Previous</button>
+        <button onclick="nextPhrase()">Next</button>
       </div>
     </div>
 
@@ -238,9 +244,9 @@
     <!-- Comments Section -->
     <div class="comments">
       <div class="comments-header">
-        <button>👍 Like</button>
-        <button>💬 Comment</button>
-        <button>🔗 Share</button>
+        <div class="stats">
+          👍 <span id="likeCount">12</span> · 💬 <span id="commentCount">2</span>
+        </div>
       </div>
       <div class="comment">
         <strong>User 1:</strong>
@@ -257,17 +263,60 @@
   <div class="modal" id="popup">
     <div class="modal-content">
       <p id="popupMessage"></p>
-      <button onclick="closePopup()">OK</button>
+      <div class="progress-bar" id="progressBar" style="display:none;">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <button id="okBtn" onclick="closePopup()">OK</button>
       <button id="shareBtn" style="display:none;" onclick="shareResult()">🔗 Share</button>
     </div>
   </div>
 
   <script>
     let quizStartTime = null;
+    let phrases = [];
+    let currentIndex = 0;
+
+    const GOOGLE_SHEET_URL = "YOUR_GOOGLE_SCRIPT_URL_HERE";
+
+    async function loadPhrases() {
+      try {
+        let res = await fetch(GOOGLE_SHEET_URL);
+        phrases = await res.json();
+        showPhrase();
+      } catch (e) {
+        document.getElementById("phraseText").textContent = "Error loading phrases.";
+      }
+    }
+
+    function showPhrase() {
+      if (phrases.length > 0) {
+        let p = phrases[currentIndex];
+        document.getElementById("phraseText").textContent = `"${p.phrase}"`;
+        document.getElementById("meaningText").textContent = p.meaning;
+        document.getElementById("usageText").textContent = p.usage;
+      }
+    }
+
+    function prevPhrase() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        showPhrase();
+      }
+    }
+
+    function nextPhrase() {
+      if (currentIndex < phrases.length - 1) {
+        currentIndex++;
+        showPhrase();
+      }
+    }
 
     function showSection(section) {
       document.getElementById('phraseSection').style.display = (section === 'phrase') ? 'block' : 'none';
       document.getElementById('quizSection').style.display = (section === 'quiz') ? 'block' : 'none';
+
+      document.getElementById('phraseBtn').disabled = (section === 'phrase');
+      document.getElementById('quizBtn').disabled = (section === 'quiz');
 
       if(section === 'quiz') {
         quizStartTime = new Date(); // start timer
@@ -278,15 +327,29 @@
       const popup = document.getElementById("popup");
       const message = document.getElementById("popupMessage");
       const shareBtn = document.getElementById("shareBtn");
+      const okBtn = document.getElementById("okBtn");
+      const progressBar = document.getElementById("progressBar");
+      const progressFill = document.getElementById("progressFill");
 
       if (isCorrect) {
         let endTime = new Date();
         let timeTaken = ((endTime - quizStartTime) / 1000).toFixed(2);
         message.textContent = `🎉 Correct! You answered in ${timeTaken} seconds.`;
         shareBtn.style.display = "inline-block";
+        shareBtn.dataset.time = timeTaken;
+        okBtn.disabled = false;
+        progressBar.style.display = "none";
       } else {
-        message.textContent = "❌ Incorrect, try again!";
+        message.textContent = "❌ Incorrect, try again in 5 seconds!";
         shareBtn.style.display = "none";
+        okBtn.disabled = true;
+        progressBar.style.display = "block";
+        progressFill.style.width = "0";
+        setTimeout(() => progressFill.style.width = "100%", 10);
+        setTimeout(() => {
+          okBtn.disabled = false;
+          progressBar.style.display = "none";
+        }, 5000);
       }
       popup.style.display = "flex";
     }
@@ -296,16 +359,32 @@
     }
 
     function shareResult() {
+      const shareBtn = document.getElementById("shareBtn");
+      let timeTaken = shareBtn.dataset.time || "?";
       if (navigator.share) {
         navigator.share({
           title: 'Word of the Day Quiz',
-          text: 'I just got the answer right in the Word of the Day quiz! 🎉',
+          text: `I just got the quiz right in ${timeTaken} seconds! 🎉`,
           url: window.location.href
         });
       } else {
         alert("Sharing not supported on this browser.");
       }
     }
+
+    function globalShare() {
+      if (navigator.share) {
+        navigator.share({
+          title: 'Word of the Day',
+          text: 'Check out today’s Word of the Day!',
+          url: window.location.href
+        });
+      } else {
+        alert("Sharing not supported on this browser.");
+      }
+    }
+
+    loadPhrases();
   </script>
 </body>
 </html>

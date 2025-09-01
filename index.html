@@ -82,16 +82,14 @@
     }
 
     .like-section {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      text-align: left;
-      font-size: 14px;
-      color: #555;
       display: flex;
       flex-direction: column;
       gap: 5px;
-      margin-top: 80px; /* Add space to avoid overlap with nav buttons */
+      font-size: 14px;
+      color: #555;
+      margin-top: 20px; /* Match spacing with nav-buttons */
+      align-items: center; /* Center horizontally */
+      text-align: left; /* Keep text left-aligned within centered container */
     }
 
     .like-section button {
@@ -104,7 +102,7 @@
       transition: 0.3s;
       margin-right: 10px;
       font-size: 14px;
-      align-self: flex-start;
+      align-self: flex-start; /* Align button with text */
     }
 
     .like-section button:hover:enabled {
@@ -296,7 +294,7 @@
         margin-left: auto;
       }
       .like-section {
-        margin-top: 80px; /* Increased space to avoid overlap with nav buttons */
+        margin-top: 20px; /* Match spacing with nav-buttons */
       }
     }
   </style>

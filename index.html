@@ -68,6 +68,7 @@
       margin-bottom: 15px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       text-align: center;
+      position: relative;
     }
 
     .card h2 {
@@ -78,6 +79,37 @@
 
     .card p {
       padding: 10px;
+    }
+
+    .like-section {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      text-align: right;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .like-section button {
+      background: #fff;
+      color: #2E8BC0;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-left: 10px;
+    }
+
+    .like-section button:hover:enabled {
+      background: #145DA0;
+      color: #fff;
+    }
+
+    .like-section button:disabled {
+      background: #ccc;
+      color: #666;
+      cursor: not-allowed;
     }
 
     /* Navigation buttons */
@@ -97,7 +129,8 @@
       font-size: 16px;
       cursor: pointer;
       transition: 0.3s;
-      width: 120px; /* Ensure same size */
+      width: 120px;
+      text-align: center;
     }
 
     .nav-buttons button:hover {
@@ -199,7 +232,7 @@
     }
 
     .modal-content {
-      background: #fff;
+      background: D#fff;
       padding: 20px;
       border-radius: 10px;
       text-align: center;
@@ -268,6 +301,11 @@
         <h2 id="phraseText">Loading...</h2>
         <p><strong>Meaning:</strong> <span id="meaningText">Loading...</span></p>
         <p><strong>Usage:</strong> <span id="usageText">Loading...</span></p>
+        <div class="like-section">
+          <span>Did you find this interesting?</span>
+          <button id="likeBtn">Like</button>
+          <span>Total likes for this phrase: <span id="phraseLikeCount">0</span></span>
+        </div>
       </div>
 
       <!-- Navigation -->
@@ -280,11 +318,9 @@
     <!-- Quiz Section -->
     <div id="quizSection" style="display:none;">
       <div class="card">
-        <h2 id="quizTitle">Quiz: What does "Target low hanging fruit" mean?</h2>
+        <h2 id="quizTitle">Loading...</h2>
         <div id="quizOptions">
-          <button class="quiz-option" onclick="checkAnswer(true)">Tackle easier options first</button>
-          <button class="quiz-option" onclick="checkAnswer(false)">Aim for difficult challenges</button>
-          <button class="quiz-option" onclick="checkAnswer(false)">Ignore minor tasks</button>
+          <!-- Options loaded dynamically -->
         </div>
       </div>
     </div>
@@ -293,10 +329,9 @@
     <div class="comments">
       <div class="comments-header">
         <div class="stats">
-          👍 <span id="likeCount">0</span> · 💬 <span id="commentCount">0</span>
+          💬 <span id="commentCount">0</span>
         </div>
         <div class="actions">
-          <button id="likeBtn">Like</button>
           <button id="commentBtn">Comment</button>
         </div>
       </div>
@@ -326,10 +361,12 @@
   <script>
     let quizStartTime = null;
     let phrases = [];
+    let quizzes = [];
     let currentIndex = 0;
 
     const PHRASES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx3wQD_d33uZsOTPlmRddf01gml1iuRiAMLyvGVk9U-Kv2-F5zIGUuSBuOBgu2O36ntNUD4KlaYhoZ/pub?output=csv";
-    const COMMENT_URL = "https://script.google.com/macros/s/AKfycbyDrNr2Tgqtf7lKKNdovVeGJyhkRFHuFr2CXVWHa8qAEinw0T0nxGY8fznEsF2J4sQOUQ/exec";
+    const QUIZ_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx3wQD_d33uZsOTPlmRddf01gml1iuRiAMLyvGVk9U-Kv2-F5zIGUuSBuOBgu2O36ntNUD4KlaYhoZ/pub?gid=102179282&single=true&output=csv"; // Replace XXXXX with Quiz tab GID
+    const COMMENT_URL = "https://script.google.com/macros/s/AKfycbwUv0pZBO5dS1CagH8Z2a_oqMumbObe0n3G2ZJ0stReGtoWs8nFCkrzIVJZeQ2-es-aAg/exec";
 
     function parseCSVLine(line) {
       let parts = [];
@@ -356,7 +393,6 @@
         let lines = text.split(/\r?\n/);
         phrases = [];
         if (lines.length > 1) {
-          // Skip header
           for (let i = 1; i < lines.length; i++) {
             if (lines[i].trim() === '') continue;
             let parts = parseCSVLine(lines[i]);
@@ -370,9 +406,36 @@
           }
         }
         showPhrase();
-        updateQuiz();
+        loadPhraseLikes();
       } catch (e) {
         document.getElementById("phraseText").textContent = "Error loading phrases.";
+      }
+    }
+
+    async function loadQuizzes() {
+      try {
+        let res = await fetch(QUIZ_CSV_URL);
+        let text = await res.text();
+        let lines = text.split(/\r?\n/);
+        quizzes = [];
+        if (lines.length > 1) {
+          for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim() === '') continue;
+            let parts = parseCSVLine(lines[i]);
+            if (parts.length >= 5) {
+              quizzes.push({
+                question: parts[0],
+                option1: parts[1],
+                option2: parts[2],
+                option3: parts[3],
+                answer: parts[4]
+              });
+            }
+          }
+        }
+        updateQuiz();
+      } catch (e) {
+        document.getElementById("quizTitle").textContent = "Error loading quiz.";
       }
     }
 
@@ -382,7 +445,7 @@
         let data = await res.json();
         let commentList = document.getElementById('commentList');
         commentList.innerHTML = '';
-        let comments = data.comments.slice(0, 3); // Show only top 3
+        let comments = data.comments.slice(0, 3);
         comments.forEach(c => {
           let newComment = document.createElement('div');
           newComment.className = 'comment';
@@ -395,11 +458,12 @@
       }
     }
 
-    async function loadLikes() {
+    async function loadPhraseLikes() {
       try {
-        let res = await fetch(`${COMMENT_URL}?action=getLikes`);
+        let phrase = phrases[currentIndex]?.phrase || '';
+        let res = await fetch(`${COMMENT_URL}?action=getLikes&phrase=${encodeURIComponent(phrase)}`);
         let data = await res.json();
-        document.getElementById('likeCount').textContent = data.likes || 0;
+        document.getElementById('phraseLikeCount').textContent = data.likes || 0;
       } catch (e) {
         console.error('Error loading likes:', e);
       }
@@ -411,6 +475,8 @@
         document.getElementById("phraseText").textContent = `"${p.phrase}"`;
         document.getElementById("meaningText").textContent = p.meaning;
         document.getElementById("usageText").textContent = p.usage;
+        document.getElementById('likeBtn').disabled = false;
+        loadPhraseLikes();
       }
     }
 
@@ -444,19 +510,19 @@
     }
 
     function updateQuiz() {
-      if (phrases.length === 0) return;
+      if (quizzes.length === 0 || phrases.length === 0) return;
       let p = phrases[currentIndex];
-      document.getElementById('quizTitle').innerHTML = `Quiz: What does "${p.phrase}" mean?`;
+      let quiz = quizzes.find(q => q.question.toLowerCase().includes(p.phrase.toLowerCase())) || quizzes[0];
+      document.getElementById('quizTitle').innerHTML = quiz.question;
 
-      let meanings = phrases.map(q => q.meaning);
-      let correct = p.meaning;
-      let wrongs = meanings.filter(m => m !== correct).sort(() => Math.random() - 0.5).slice(0, 2);
-      let options = [correct, ...wrongs].sort(() => Math.random() - 0.5);
+      let options = [quiz.option1, quiz.option2, quiz.option3];
+      let correctAnswer = quiz.answer;
+      options = options.sort(() => Math.random() - 0.5);
 
       let quizOptions = document.getElementById('quizOptions');
       quizOptions.innerHTML = '';
       options.forEach(opt => {
-        let isCorrect = opt === correct;
+        let isCorrect = opt === correctAnswer;
         let btn = document.createElement('button');
         btn.className = 'quiz-option';
         btn.textContent = opt;
@@ -526,15 +592,15 @@
       }
     }
 
-    // Like and Comment functionality
     document.getElementById('likeBtn').onclick = async function() {
       this.disabled = true;
+      let phrase = phrases[currentIndex]?.phrase || '';
       try {
-        let res = await fetch(`${COMMENT_URL}?action=addLike`, { method: 'POST' });
+        let res = await fetch(`${COMMENT_URL}?action=addLike&phrase=${encodeURIComponent(phrase)}`, { method: 'POST' });
         let data = await res.json();
         if (data.status === 'success') {
-          let count = parseInt(document.getElementById('likeCount').textContent);
-          document.getElementById('likeCount').textContent = count + 1;
+          let count = parseInt(document.getElementById('phraseLikeCount').textContent);
+          document.getElementById('phraseLikeCount').textContent = count + 1;
         } else {
           alert('Error adding like.');
           this.disabled = false;
@@ -586,8 +652,8 @@
 
     // Initialize
     loadPhrases();
+    loadQuizzes();
     loadComments();
-    loadLikes();
   </script>
 </body>
 </html>

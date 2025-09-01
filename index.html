@@ -85,9 +85,13 @@
       position: absolute;
       bottom: 10px;
       right: 10px;
-      text-align: right;
+      text-align: left;
       font-size: 14px;
       color: #555;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 80px; /* Add space to avoid overlap with nav buttons */
     }
 
     .like-section button {
@@ -100,6 +104,7 @@
       transition: 0.3s;
       margin-right: 10px;
       font-size: 14px;
+      align-self: flex-start;
     }
 
     .like-section button:hover:enabled {
@@ -222,6 +227,14 @@
       background: #145DA0;
     }
 
+    /* Quiz Header */
+    .quiz-header {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      margin-bottom: 10px;
+      color: #2E8BC0;
+    }
+
     /* Popup Modal */
     .modal {
       display: none;
@@ -282,6 +295,9 @@
       .top-nav button:last-child {
         margin-left: auto;
       }
+      .like-section {
+        margin-top: 80px; /* Increased space to avoid overlap with nav buttons */
+      }
     }
   </style>
 </head>
@@ -309,9 +325,11 @@
           <button onclick="nextPhrase()">Next</button>
         </div>
         <div class="like-section">
-          <span>Did you find this interesting?</span>
-          <button id="likeBtn">Like</button>
-          <span>Total likes for this phrase: <span id="phraseLikeCount">0</span></span>
+          <div>
+            <span>Did you find this interesting?</span>
+            <button id="likeBtn">Like</button>
+          </div>
+          <div>Total likes for this phrase: <span id="phraseLikeCount">0</span></div>
         </div>
       </div>
     </div>
@@ -319,6 +337,7 @@
     <!-- Quiz Section -->
     <div id="quizSection" style="display:none;">
       <div class="card">
+        <div class="quiz-header">Quiz of the Day</div>
         <h2 id="quizTitle">Loading...</h2>
         <div id="quizOptions">
           <!-- Options loaded dynamically -->
@@ -366,7 +385,7 @@
     let currentIndex = 0;
 
     const PHRASES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx3wQD_d33uZsOTPlmRddf01gml1iuRiAMLyvGVk9U-Kv2-F5zIGUuSBuOBgu2O36ntNUD4KlaYhoZ/pub?output=csv";
-    const QUIZ_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx3wQD_d33uZsOTPlmRddf01gml1iuRiAMLyvGVk9U-Kv2-F5zIGUuSBuOBgu2O36ntNUD4KlaYhoZ/pub?gid=102179282&single=true&output=csv"; // Replace XXXXX with Quiz tab GID
+    const QUIZ_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSx3wQD_d33uZsOTPlmRddf01gml1iuRiAMLyvGVk9U-Kv2-F5zIGUuSBuOBgu2O36ntNUD4KlaYhoZ/pub?gid=102179282&single=true&output=csv";
     const COMMENT_URL = "https://script.google.com/macros/s/AKfycbwUv0pZBO5dS1CagH8Z2a_oqMumbObe0n3G2ZJ0stReGtoWs8nFCkrzIVJZeQ2-es-aAg/exec";
 
     function parseCSVLine(line) {
